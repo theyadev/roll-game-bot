@@ -28,28 +28,6 @@ active_games = {}
 async def on_ready():
     print("We have logged in as {0.user}".format(bot))
 
-# Trouve un nom en attendant, je cherche a quoi sert ma fonction xD
-async def jaipadenom(id_, game, ctx, number):
-    game.players[id_] += 1
-
-    if "team" in str(id_):
-        await ctx.send(f"La Team {id_[len(id_-2):]}" + " a fait: " + f"🎉🎉 {number} 🎉🎉 {f'({1/number:.1%})'}")
-    else:
-        await ctx.send(ctx.author.name+ " a fait: " + f"🎉🎉 {number} 🎉🎉 {f'({1/number:.1%})'}")
-
-    if game.players[id_] - 1 == game.max:
-        await ctx.send(f"La partie est terminé ! Le vainqueur est {'la Team' + id_[len(id_-2):] if 'team' in str(id_) else ctx.author.name}")
-
-        for key, curr in game.players.items():
-            if curr != game.players[id_]:
-                if "team" in str(id_):
-                    await ctx.send(f"{key} : {curr - 1}")
-                else: 
-                    player: User = await bot.fetch_user(key)
-
-                    await ctx.send(f"{player.name} : {curr - 1}")
-        del active_games[ctx.guild.id]
-
 @bot.command(aliases=["r", "roll"])
 async def rollCommand(ctx: Context, max: int = 100):
     number = roll(max)
@@ -57,24 +35,45 @@ async def rollCommand(ctx: Context, max: int = 100):
     if ctx.guild.id in active_games:
         game: Game = active_games[ctx.guild.id]
 
-        if not ctx.author.id in game.players:
-            game.players[ctx.author.id] = 1
+        id_ = None
 
-        if max == game.players[ctx.author.id]:
-            if number == game.players[ctx.author.id]:
-                if game.type == "TEAM" :
-                    team: str = None
+        if game.type == "TEAM" :
+            if ctx.channel.id == game.team1_id:
+                id_ = "team1"
+            elif ctx.channel.id == game.team2_id:
+                id_ = "team2"
+        else:
+            id_ = ctx.author.id
 
-                    if ctx.channel.id == game.team1_id:
-                        team = "team1"
-                    elif ctx.channel.id == game.team2_id:
-                        team = "team2"
+        if not id_ in game.players:
+            game.players[id_] = 1
 
-                    await jaipadenom(id_=team, game=game, ctx=ctx, number=number)
+        if max == game.players[id_]:
+            if id_ is not None:
+                if number == game.players[id_]:
+                    game.players[id_] += 1
 
-                else:
-                    await jaipadenom(id_=ctx.author.id, game=game, ctx=ctx, number=number)
-                return
+                    str_number = f"🎉🎉 {number} 🎉🎉 {f'({1/number:.1%})'}"
+
+                    if "team" in str(id_):
+                        await ctx.send(f"La Team {id_[len(id_)-1:]}" + " a fait: " + str_number)
+                    else:
+                        await ctx.send(ctx.author.name+ " a fait: " + str_number)
+
+                    if game.players[id_] - 1 == game.max:
+                        await ctx.send(f"La partie est terminé ! Le vainqueur est {'la Team' + str(id_)[len(str(id_))-1:] if 'team' in str(id_) else ctx.author.name}")
+
+                        for key, curr in game.players.items():
+                            if curr != game.players[id_]:
+                                if "team" in str(id_):
+                                    await ctx.send(f"{key} : {curr - 1}")
+                                else: 
+                                    player: User = await bot.fetch_user(key)
+
+                                    await ctx.send(f"{player.name} : {curr - 1}")
+                        del active_games[ctx.guild.id]
+                    return
+
             
     await ctx.send(ctx.author.name + " a fait: " + str(number))
 
